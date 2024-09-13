@@ -35,9 +35,9 @@ const (
 type ErrorCode string
 
 type Error struct {
-	HttpStatusCode HttpStatusCode
-	ErrorCode      ErrorCode
-	Reason         string
+	httpStatusCode HttpStatusCode
+	errorCode      ErrorCode
+	reason         string
 }
 
 // ResponseErr 响应错误
@@ -46,14 +46,22 @@ type ResponseErr struct {
 	Reason string `json:"reason"`
 }
 
+func (e *Error) ErrorCode() string {
+	return string(e.errorCode)
+}
+
 // Error 实现 error 接口
 func (e *Error) Error() string {
-	return e.Reason
+	return e.reason
+}
+
+func (e *Error) HttpStatusCode() int {
+	return int(e.httpStatusCode)
 }
 
 // WithCause 添加错误原因
 func (e *Error) WithCause(cause string) error {
-	ne := NewError(e.HttpStatusCode, e.ErrorCode, fmt.Sprintf("%s: %s", e.Reason, cause))
+	ne := NewError(e.httpStatusCode, e.errorCode, fmt.Sprintf("%s: %s", e.reason, cause))
 	return ne
 }
 
@@ -68,17 +76,18 @@ func WithCause(err error, cause string) error {
 }
 
 // Data 返回错误数据
-func (e *Error) Data() (HttpStatusCode, *ResponseErr) {
-	return e.HttpStatusCode, &ResponseErr{
-		Code:   string(e.ErrorCode),
-		Reason: e.Reason,
+func (e *Error) Data() *ResponseErr {
+	return &ResponseErr{
+		Code:   string(e.errorCode),
+		Reason: e.reason,
 	}
 }
 
+// NewError 创建一个新的错误
 func NewError(httpStatuCode HttpStatusCode, errorCode ErrorCode, reason string) *Error {
 	return &Error{
-		HttpStatusCode: httpStatuCode,
-		ErrorCode:      errorCode,
-		Reason:         reason,
+		httpStatusCode: httpStatuCode,
+		errorCode:      errorCode,
+		reason:         reason,
 	}
 }

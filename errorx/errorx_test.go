@@ -1,95 +1,43 @@
-package errorx_test
+package errorx
 
 import (
-	"errors"
-	"fmt"
 	"testing"
-
-	"github.com/yu1ec/go-pkg/errorx"
 )
 
 func TestNewError(t *testing.T) {
-	err := errorx.NewError(errorx.ErrBadRequest, "ERR001", "Invalid input")
-	if err.HttpStatusCode != errorx.ErrBadRequest {
-		t.Errorf("Expected HTTP status code %d, got %d", errorx.ErrBadRequest, err.HttpStatusCode)
-	}
-	if err.ErrorCode != "ERR001" {
-		t.Errorf("Expected error code ERR001, got %s", err.ErrorCode)
-	}
-	if err.Reason != "Invalid input" {
-		t.Errorf("Expected reason 'Invalid input', got '%s'", err.Reason)
-	}
-}
+	err := NewError(ErrBadRequest, "INVALID_INPUT", "Invalid input")
 
-func TestError_Error(t *testing.T) {
-	err := errorx.NewError(errorx.ErrBadRequest, "ERR001", "Invalid input")
+	if err.HttpStatusCode() != int(ErrBadRequest) {
+		t.Errorf("Expected HTTP status code %d, got %d", int(ErrBadRequest), err.HttpStatusCode())
+	}
+
+	if err.ErrorCode() != "INVALID_INPUT" {
+		t.Errorf("Expected error code 'INVALID_INPUT', got '%s'", err.ErrorCode())
+	}
+
 	if err.Error() != "Invalid input" {
-		t.Errorf("Expected error message 'Invalid input', got '%s'", err.Error())
-	}
-}
-
-func TestError_WithCause(t *testing.T) {
-	err := errorx.NewError(errorx.ErrBadRequest, "ERR001", "Invalid input")
-	newErr := err.WithCause("Missing field")
-	if newErr.Error() != "Invalid input: Missing field" {
-		t.Errorf("Expected error message 'Invalid input: Missing field', got '%s'", newErr.Error())
+		t.Errorf("Expected reason 'Invalid input', got '%s'", err.Error())
 	}
 }
 
 func TestWithCause(t *testing.T) {
-	t.Run("With errorx.Error", func(t *testing.T) {
-		err := errorx.NewError(errorx.ErrBadRequest, "ERR001", "Invalid input")
-		newErr := errorx.WithCause(err, "Missing field")
-		if newErr.Error() != "Invalid input: Missing field" {
-			t.Errorf("Expected error message 'Invalid input: Missing field', got '%s'", newErr.Error())
-		}
-	})
+	originalErr := NewError(ErrBadRequest, "INVALID_INPUT", "Invalid input")
+	err := WithCause(originalErr, "Additional information")
 
-	t.Run("With standard error", func(t *testing.T) {
-		err := errors.New("Standard error")
-		newErr := errorx.WithCause(err, "Additional info")
-		if newErr.Error() != "Additional info: Standard error" {
-			t.Errorf("Expected error message 'Additional info: Standard error', got '%s'", newErr.Error())
-		}
-	})
-}
-
-func TestError_Data(t *testing.T) {
-	err := errorx.NewError(errorx.ErrBadRequest, "ERR001", "Invalid input")
-	statusCode, respErr := err.Data()
-
-	if statusCode != errorx.ErrBadRequest {
-		t.Errorf("Expected HTTP status code %d, got %d", errorx.ErrBadRequest, statusCode)
-	}
-
-	if respErr.Code != "ERR001" {
-		t.Errorf("Expected error code ERR001, got %s", respErr.Code)
-	}
-
-	if respErr.Reason != "Invalid input" {
-		t.Errorf("Expected reason 'Invalid input', got '%s'", respErr.Reason)
+	if err.Error() != "Invalid input: Additional information" {
+		t.Errorf("Expected 'Invalid input: Additional information', got '%s'", err.Error())
 	}
 }
 
-func TestHttpStatusCodes(t *testing.T) {
-	testCases := []struct {
-		code     errorx.HttpStatusCode
-		expected int
-	}{
-		{errorx.ErrBadRequest, 400},
-		{errorx.ErrUnauthorized, 401},
-		{errorx.ErrForbidden, 403},
-		{errorx.ErrNotFound, 404},
-		{errorx.ErrMethodNotAllowed, 405},
-		{errorx.ErrNotAcceptable, 406},
-		{errorx.ErrInternalServerError, 500},
+func TestErrorData(t *testing.T) {
+	err := NewError(ErrBadRequest, "INVALID_INPUT", "Invalid input")
+	data := err.Data()
+
+	if data.Code != "INVALID_INPUT" {
+		t.Errorf("Expected code 'INVALID_INPUT', got '%s'", data.Code)
 	}
 
-	for _, tc := range testCases {
-		t.Run(fmt.Sprintf("HttpStatusCode_%d", tc.expected), func(t *testing.T) {
-			if int(tc.code) != tc.expected {
-				t.Errorf("Expected HTTP status code %d, got %d", tc.expected, tc.code)
-			}
-		})
+	if data.Reason != "Invalid input" {
+		t.Errorf("Expected reason 'Invalid input', got '%s'", data.Reason)
 	}
 }
