@@ -83,8 +83,8 @@ func JsonPagination(w ResponseWriter, data any, total int64) {
 	})
 }
 
-// ErrorJsonResponse 错误Json格式响应
-func ErrorJsonResponse(w ResponseWriter, err error) {
+// JsonResponseWithError 携带错误信息的Json响应
+func JsonResponseWithError(w ResponseWriter, err error) {
 	w.Header().Set("Content-Type", "application/json")
 	if e, ok := err.(*errorx.Error); ok {
 		w.Status(e.HttpStatusCode())

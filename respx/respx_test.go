@@ -79,7 +79,7 @@ func TestErrorJsonResponse(t *testing.T) {
 		rec := httptest.NewRecorder()
 		w := respx.NewResponseWriter(rec)
 		err := errorx.NewError(http.StatusBadRequest, "000000", "无效的请求")
-		respx.ErrorJsonResponse(w, err)
+		respx.JsonResponseWithError(w, err)
 		assert.Equal(t, http.StatusBadRequest, rec.Code)
 		assert.Equal(t, "application/json", rec.Header().Get("Content-Type"))
 		var result map[string]interface{}
@@ -91,7 +91,7 @@ func TestErrorJsonResponse(t *testing.T) {
 		rec := httptest.NewRecorder()
 		w := respx.NewResponseWriter(rec)
 		err := errors.New("标准错误")
-		respx.ErrorJsonResponse(w, err)
+		respx.JsonResponseWithError(w, err)
 		assert.Equal(t, http.StatusInternalServerError, rec.Code)
 		assert.Equal(t, "application/json", rec.Header().Get("Content-Type"))
 		var result map[string]string
