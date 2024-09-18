@@ -8,12 +8,23 @@ import (
 	"github.com/yu1ec/go-pkg/dirx"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
+	"gopkg.in/natefinch/lumberjack.v2"
 )
 
+// RotateConfig 日志轮转配置
+type RotateConfig struct {
+	MaxSize    int  `json:"maxsize" default:"100"`    // 最大文件大小，单位：MB
+	MaxAge     int  `json:"maxage" default:"7"`       // 最大保存天数
+	MaxBackups int  `json:"maxbackups" default:"10"`  // 最大备份数
+	Compress   bool `json:"compress" default:"false"` // 是否压缩
+	LocalTime  bool `json:"localtime" default:"true"` // 是否使用本地时间
+}
+
 type LogConfig struct {
-	Level      string `json:"level"`
-	File       string `json:"file"`
-	Production bool   `json:"production"`
+	Level      string        `json:"level"`
+	File       string        `json:"file"`
+	Production bool          `json:"production"`
+	Rotate     *RotateConfig `json:"rotate,omitempty"`
 }
 
 var (
@@ -37,11 +48,23 @@ func NewLogger(lc LogConfig) (*zap.Logger, error) {
 			return nil, fmt.Errorf("failed to create log dir: %w", err)
 		}
 
-		f, _, err := zap.Open(lf)
-		if err != nil {
-			return nil, fmt.Errorf("open log file failed: %w", err)
+		if lc.Rotate != nil {
+			rotateCfg := lc.Rotate
+			rotateLog := &lumberjack.Logger{
+				Filename:   lc.File,
+				MaxSize:    rotateCfg.MaxSize,
+				MaxAge:     rotateCfg.MaxAge,
+				MaxBackups: rotateCfg.MaxBackups,
+				Compress:   rotateCfg.Compress,
+			}
+			out = zapcore.AddSync(rotateLog)
+		} else {
+			f, _, err := zap.Open(lf)
+			if err != nil {
+				return nil, fmt.Errorf("open log file failed: %w", err)
+			}
+			out = zapcore.Lock(f)
 		}
-		out = zapcore.Lock(f)
 	} else {
 		out = stderr
 	}

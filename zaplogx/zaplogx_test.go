@@ -153,3 +153,62 @@ func TestNop(t *testing.T) {
 
 	// 无需检查输出，因为 NopLogger 保证不会产生任何输出
 }
+
+func TestLogRotation(t *testing.T) {
+	tempDir := t.TempDir()
+	logFile := filepath.Join(tempDir, "test.log")
+
+	config := LogConfig{
+		Level:      "info",
+		File:       logFile,
+		Production: true,
+		Rotate: &RotateConfig{
+			MaxSize:    1, // 1 MB
+			MaxBackups: 3,
+			MaxAge:     1,
+			Compress:   false,
+			LocalTime:  true,
+		},
+	}
+
+	logger, err := NewLogger(config)
+	require.NoError(t, err)
+	defer logger.Sync()
+
+	// 写入足够的日志以触发切割
+	for i := 0; i < 1000000; i++ {
+		logger.Info("这是一条测试日志消息，用于触发日志切割")
+	}
+
+	// 等待文件系统操作完成
+	time.Sleep(time.Second)
+
+	// 检查日志文件
+	files, err := os.ReadDir(tempDir)
+	require.NoError(t, err)
+
+	logFiles := []string{}
+	for _, file := range files {
+		if strings.HasPrefix(file.Name(), "test") {
+			logFiles = append(logFiles, file.Name())
+		}
+	}
+
+	// 验证是否至少有两个日志文件
+	assert.GreaterOrEqual(t, len(logFiles), 2, "应该至少有两个日志文件（原始文件和切割后的文件）")
+
+	// 验证原始日志文件大小
+	originalLogInfo, err := os.Stat(logFile)
+	require.NoError(t, err)
+	assert.Less(t, originalLogInfo.Size(), int64(2*1024*1024), "原始日志文件不应超过 2 MB")
+	assert.Greater(t, originalLogInfo.Size(), int64(0), "原始日志文件不应为空")
+
+	// 验证所有日志文件的总大小
+	var totalSize int64
+	for _, fileName := range logFiles {
+		fileInfo, err := os.Stat(filepath.Join(tempDir, fileName))
+		require.NoError(t, err)
+		totalSize += fileInfo.Size()
+	}
+	assert.Greater(t, totalSize, int64(1024*1024), "所有日志文件的总大小应超过 1 MB")
+}
