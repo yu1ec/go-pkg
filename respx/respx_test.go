@@ -1,11 +1,14 @@
 package respx_test
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
@@ -97,5 +100,90 @@ func TestErrorJsonResponse(t *testing.T) {
 		var result map[string]string
 		json.Unmarshal(rec.Body.Bytes(), &result)
 		assert.Equal(t, "标准错误", result["error"])
+	})
+}
+
+// 模拟 ResponseWriter 和 Flusher
+type mockResponseWriter struct {
+	headers    http.Header
+	body       strings.Builder
+	statusCode int
+	flushed    bool
+}
+
+func newMockResponseWriter() *mockResponseWriter {
+	return &mockResponseWriter{
+		headers: make(http.Header),
+	}
+}
+
+func (m *mockResponseWriter) Header() http.Header {
+	return m.headers
+}
+
+func (m *mockResponseWriter) Write(b []byte) (int, error) {
+	return m.body.Write(b)
+}
+
+func (m *mockResponseWriter) WriteHeader(statusCode int) {
+	m.statusCode = statusCode
+}
+
+func (m *mockResponseWriter) Status(code int) {
+	m.statusCode = code
+}
+
+func (m *mockResponseWriter) Flush() {
+	m.flushed = true
+}
+
+func TestEventSource(t *testing.T) {
+	t.Run("正常情况", func(t *testing.T) {
+		w := newMockResponseWriter()
+		r := httptest.NewRequest("GET", "/events", nil)
+
+		handler := func(ctx context.Context, lastEventID string) (<-chan respx.EventSourceMessage, error) {
+			ch := make(chan respx.EventSourceMessage, 1)
+			ch <- respx.EventSourceMessage{Event: "test", Data: "hello", ID: "1"}
+			close(ch)
+			return ch, nil
+		}
+
+		done := make(chan bool)
+		go func() {
+			respx.EventSource(w, r, handler)
+			done <- true
+		}()
+
+		select {
+		case <-done:
+		case <-time.After(1 * time.Second):
+			t.Fatal("EventSource 没有在预期时间内完成")
+		}
+
+		expectedOutput := "event: test\nid: 1\ndata: hello\n\n"
+		if w.body.String() != expectedOutput {
+			t.Errorf("输出不匹配。期望：%q，实际：%q", expectedOutput, w.body.String())
+		}
+
+		if !w.flushed {
+			t.Error("Flush 未被调用")
+		}
+	})
+
+	t.Run("不支持 Flusher", func(t *testing.T) {
+		rec := httptest.NewRecorder()
+		w := &respx.StandardResponseWriter{ResponseWriter: rec}
+		r := httptest.NewRequest("GET", "/events", nil)
+
+		handler := func(ctx context.Context, lastEventID string) (<-chan respx.EventSourceMessage, error) {
+			return make(chan respx.EventSourceMessage), nil
+		}
+
+		respx.EventSource(w, r, handler)
+
+		if rec.Code != http.StatusInternalServerError {
+			t.Errorf("期望状态码 %d，实际：%d", http.StatusInternalServerError, rec.Code)
+		}
 	})
 }
