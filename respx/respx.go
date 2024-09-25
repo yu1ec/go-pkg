@@ -64,35 +64,54 @@ func NewResponseWriter(w any) ResponseWriter {
 
 // NoContent 是空响应
 func NoContent(w ResponseWriter) {
+	triggerEvent(BeforeResponse, w, nil)
 	w.Status(http.StatusNoContent)
+	triggerEvent(AfterResponse, w, nil)
 }
 
 // PlainContent 是纯文本响应
 func PlainContent(w ResponseWriter, data any) {
+	triggerEvent(BeforeResponse, w, data)
 	w.Header().Set("Content-Type", "text/plain")
 	w.Status(http.StatusOK)
 	w.Write([]byte(data.(string)))
+	triggerEvent(AfterResponse, w, data)
 }
 
 // JsonContent 是 JSON 响应
 func JsonContent(w ResponseWriter, data any) {
+	triggerEvent(BeforeResponse, w, data)
 	w.Header().Set("Content-Type", "application/json")
 	w.Status(http.StatusOK)
-	json.NewEncoder(w).Encode(data)
+	err := json.NewEncoder(w).Encode(data)
+	if err != nil {
+		// 如果编码失败，返回错误信息
+		w.Header().Set("Content-Type", "application/json")
+		w.Status(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{"error": "JSON encoding failed"})
+	}
+	triggerEvent(AfterResponse, w, data)
 }
 
 // Pagination 是分页响应
 func JsonPagination(w ResponseWriter, data any, total int64) {
+	responseData := gin.H{
+		"data":  data,
+		"total": total,
+	}
+	triggerEvent(BeforeResponse, w, responseData)
 	w.Header().Set("Content-Type", "application/json")
 	w.Status(http.StatusOK)
 	json.NewEncoder(w).Encode(gin.H{
 		"data":  data,
 		"total": total,
 	})
+	triggerEvent(AfterResponse, w, responseData)
 }
 
 // JsonResponseWithError 携带错误信息的Json响应
 func JsonResponseWithError(w ResponseWriter, err error) {
+	triggerEvent(BeforeResponse, w, err)
 	w.Header().Set("Content-Type", "application/json")
 	if e, ok := err.(*errorx.Error); ok {
 		w.Status(e.HttpStatusCode())
@@ -101,6 +120,7 @@ func JsonResponseWithError(w ResponseWriter, err error) {
 		w.Status(http.StatusInternalServerError)
 		json.NewEncoder(w).Encode(gin.H{"error": err.Error()})
 	}
+	triggerEvent(AfterResponse, w, err)
 }
 
 type EventSourceMessage struct {

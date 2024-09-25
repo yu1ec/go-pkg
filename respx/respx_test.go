@@ -187,3 +187,60 @@ func TestEventSource(t *testing.T) {
 		}
 	})
 }
+
+func TestEvents(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	t.Run("BeforeResponseEvent", func(t *testing.T) {
+		respx.ClearEventHandlers()
+		defer respx.ClearEventHandlers()
+
+		eventFired := false
+		respx.RegisterEvent(respx.BeforeResponse, func(w respx.ResponseWriter, data any) {
+			eventFired = true
+			assert.Equal(t, "Hello, Event!", data)
+		})
+
+		w := httptest.NewRecorder()
+		respx.PlainContent(respx.NewResponseWriter(w), "Hello, Event!")
+		assert.True(t, eventFired)
+	})
+
+	t.Run("AfterResponseEvent", func(t *testing.T) {
+		respx.ClearEventHandlers()
+		defer respx.ClearEventHandlers()
+
+		eventFired := false
+		respx.RegisterEvent(respx.AfterResponse, func(w respx.ResponseWriter, data any) {
+			eventFired = true
+			assert.Equal(t, "Hello, Event!", data)
+		})
+
+		w := httptest.NewRecorder()
+		respx.PlainContent(respx.NewResponseWriter(w), "Hello, Event!")
+		assert.True(t, eventFired)
+	})
+
+	t.Run("MultipleEvents", func(t *testing.T) {
+		respx.ClearEventHandlers()
+		defer respx.ClearEventHandlers()
+
+		beforeFired := false
+		afterFired := false
+
+		respx.RegisterEvent(respx.BeforeResponse, func(w respx.ResponseWriter, data any) {
+			beforeFired = true
+			assert.Equal(t, map[string]string{"message": "Hello, Events!"}, data)
+		})
+		respx.RegisterEvent(respx.AfterResponse, func(w respx.ResponseWriter, data any) {
+			afterFired = true
+			assert.Equal(t, map[string]string{"message": "Hello, Events!"}, data)
+		})
+
+		w := httptest.NewRecorder()
+		respx.JsonContent(respx.NewResponseWriter(w), map[string]string{"message": "Hello, Events!"})
+
+		assert.True(t, beforeFired)
+		assert.True(t, afterFired)
+	})
+}
