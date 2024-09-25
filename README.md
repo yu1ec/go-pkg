@@ -13,3 +13,4 @@ go get github.com/yu1ec/go-pkg/...
 * dirx: 目录处理库，支持创建嵌套目录
 * zaplogx: 日志处理库，支持自定义日志级别，日志文件，日志格式等
 * constraints: 泛型约束处理库
+* [cachex](./cachex/README.md): 缓存处理库，支持多种缓存实现，包括内存缓存，Redis 缓存等
