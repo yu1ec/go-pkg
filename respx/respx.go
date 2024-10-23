@@ -70,11 +70,19 @@ func NoContent(w ResponseWriter) {
 }
 
 // PlainContent 是纯文本响应
-func PlainContent(w ResponseWriter, data any) {
+func PlainContent(w ResponseWriter, data string) {
 	triggerEvent(BeforeResponse, w, data)
 	w.Header().Set("Content-Type", "text/plain")
 	w.Status(http.StatusOK)
-	w.Write([]byte(data.(string)))
+	w.Write([]byte(data))
+	triggerEvent(AfterResponse, w, data)
+}
+
+func PlainContentWithStatus(w ResponseWriter, data string, status int) {
+	triggerEvent(BeforeResponse, w, data)
+	w.Header().Set("Content-Type", "text/plain")
+	w.Status(status)
+	w.Write([]byte(data))
 	triggerEvent(AfterResponse, w, data)
 }
 

@@ -52,6 +52,15 @@ func TestPlainContent(t *testing.T) {
 	assert.Equal(t, "测试文本", rec.Body.String())
 }
 
+func TestPlainContentWithStatus(t *testing.T) {
+	rec := httptest.NewRecorder()
+	w := respx.NewResponseWriter(rec)
+	respx.PlainContentWithStatus(w, "测试文本", http.StatusOK)
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Equal(t, "text/plain", rec.Header().Get("Content-Type"))
+	assert.Equal(t, "测试文本", rec.Body.String())
+}
+
 func TestJsonContent(t *testing.T) {
 	rec := httptest.NewRecorder()
 	w := respx.NewResponseWriter(rec)
