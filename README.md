@@ -15,3 +15,4 @@ go get github.com/yu1ec/go-pkg/...
 * constraints: 泛型约束处理库
 * [cachex](./cachex/README.md): 缓存处理库，支持多种缓存实现，包括内存缓存，Redis 缓存等
 * [strconvx](./strconvx/README.md): 字符串转换处理库，支持多种数字类型转换
+* [requestx](./requestx/README.md): HTTP 请求处理库，支持 GET, POST, PUT, PATCH, DELETE 等请求方法，支持 JSON, XML, Multipart 等请求体格式
