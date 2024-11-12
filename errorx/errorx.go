@@ -38,6 +38,7 @@ type Error struct {
 	httpStatusCode HttpStatusCode
 	errorCode      ErrorCode
 	reason         string
+	cause          error
 }
 
 // ResponseErr 响应错误
@@ -52,7 +53,19 @@ func (e *Error) ErrorCode() string {
 
 // Error 实现 error 接口
 func (e *Error) Error() string {
+	if e.cause != nil {
+		return fmt.Sprintf("%s: %v", e.reason, e.cause)
+	}
 	return e.reason
+}
+
+// Is 判断错误是否相等
+func (e *Error) Is(target error) bool {
+	t, ok := target.(*Error)
+	if !ok {
+		return false
+	}
+	return e.errorCode == t.errorCode && e.httpStatusCode == t.httpStatusCode
 }
 
 func (e *Error) HttpStatusCode() int {
@@ -61,25 +74,40 @@ func (e *Error) HttpStatusCode() int {
 
 // WithCause 添加错误原因
 func (e *Error) WithCause(cause string) error {
-	ne := NewError(e.httpStatusCode, e.errorCode, fmt.Sprintf("%s: %s", e.reason, cause))
-	return ne
+	return &Error{
+		httpStatusCode: e.httpStatusCode,
+		errorCode:      e.errorCode,
+		reason:         e.reason,
+		cause:          fmt.Errorf(cause),
+	}
 }
 
 func WithCause(err error, cause string) error {
+	if err == nil {
+		return nil
+	}
 	switch e := err.(type) {
 	case *Error:
-		return e.WithCause(cause)
+		return &Error{
+			httpStatusCode: e.httpStatusCode,
+			errorCode:      e.errorCode,
+			reason:         e.reason,
+			cause:          fmt.Errorf(cause),
+		}
 	default:
-		ne := fmt.Errorf("%s: %w", cause, e)
-		return ne
+		return fmt.Errorf("%s: %w", cause, err)
 	}
 }
 
 // Data 返回错误数据
 func (e *Error) Data() *ResponseErr {
+	reason := e.reason
+	if e.cause != nil {
+		reason = e.Error()
+	}
 	return &ResponseErr{
 		Code:   string(e.errorCode),
-		Reason: e.reason,
+		Reason: reason,
 	}
 }
 
