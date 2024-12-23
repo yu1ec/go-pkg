@@ -109,8 +109,10 @@ func (r *Request) Request(method, uri string, opts ...Options) (*Response, error
 
 	if r.opts.Debug {
 		dump, err := httputil.DumpRequest(r.req, true)
-		if err != nil {
+		if err == nil { // 修改判断条件：成功时打印
 			fmt.Printf("\n%s\n\n", dump)
+		} else {
+			fmt.Printf("dump request error: %v\n", err)
 		}
 	}
 
